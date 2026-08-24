@@ -1,0 +1,24 @@
+# Contexto de build enxuto: mantém apenas src/, requirements.txt e o dataset.
+__pycache__/
+*.py[cod]
+.git/
+.gitignore
+
+# artefatos e entregaveis (nao entram na imagem da API)
+img/
+templates/
+dashboard.html
+EC_Sprint_*.pptx
+README*.md
+Dockerfile
+.dockerignore
+
+# scripts de geracao de deck/painel (nao necessarios para servir a API)
+builder.py
+capture_dashboard.py
+build_sprint3_from_sprint2.py
+
+# gerados no build da imagem
+models/
+data/*.csv
+data/metrics_report.json

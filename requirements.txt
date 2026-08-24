@@ -1,0 +1,24 @@
+# AlertOpsLite - Sprint 3 (MVP) - dependencias Python
+# Testado com Python 3.12
+
+# --- Dados & ML ---
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.4
+joblib>=1.3
+openpyxl>=3.1.5          # leitura do LW-DATASET.xlsx (pandas 3.x exige >=3.1.5)
+
+# --- Data Viz ---
+plotly>=5.20
+kaleido>=0.2             # exportacao de graficos Plotly em PNG
+
+# --- Backend / API ---
+fastapi>=0.110
+uvicorn>=0.27
+pydantic>=2.5
+
+# --- Apresentacao ---
+python-pptx>=0.6.23
+
+# --- Testes (opcional) ---
+httpx>=0.27              # TestClient do FastAPI

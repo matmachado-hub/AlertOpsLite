@@ -1,0 +1,26 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- Artefatos gerados (reproduzíveis via builder.py) ---
+data/*.csv
+data/metrics_report.json
+models/*.joblib
+models/metadata.json
+img/*.png
+
+# --- SO / editores ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Observações ---
+# data/LW-DATASET.xlsx (11 MB) é input e fica versionado. Para repositórios
+# grandes, considere Git LFS: `git lfs track "*.xlsx"`.
+# Os deliverables (EC_Sprint_3_*.pptx e dashboard.html) ficam versionados.
