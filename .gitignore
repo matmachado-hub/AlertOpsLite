@@ -14,11 +14,13 @@ models/*.joblib
 models/metadata.json
 img/*.png
 
-# --- SO / editores ---
+# --- SO / editores / Office ---
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+~$*                     # arquivos de lock do PowerPoint/Word
+_verify_*.pptx          # pptx temporário de verificação
 
 # --- Observações ---
 # data/LW-DATASET.xlsx (11 MB) é input e fica versionado. Para repositórios

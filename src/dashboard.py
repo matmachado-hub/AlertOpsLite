@@ -377,6 +377,34 @@ def build_quality(metrics):
     return fig
 
 
+def build_noise_funnel(meta):
+    total = int(meta.get("raw_count", 122543))
+    elig = int(meta.get("eligible_count", 25600))
+    fig = go.Figure(go.Funnel(
+        y=["Chamados brutos", "Elegíveis ao KPI (P2/P3)"],
+        x=[total, elig], textposition="inside", textinfo="value+percent initial",
+        textfont=dict(family=FONT, size=14, color="white"),
+        marker=dict(color=[C_INDIGO, C_TEAL]),
+        connector=dict(line=dict(color=C_GRID, width=1)),
+    ))
+    fig.update_layout(**BASE_LAYOUT, title=_title("Funil de dados — do bruto ao elegível", 15), height=340)
+    return fig
+
+
+def build_weekday(kpi):
+    order = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+    counts = kpi["day_of_week"].value_counts().reindex(range(7), fill_value=0).sort_index()
+    vals = [int(v) for v in counts.tolist()]
+    colors = [C_INDIGO] * 5 + [C_AMBER, C_AMBER]
+    fig = go.Figure(go.Bar(
+        x=order, y=vals, marker_color=colors,
+        text=[f"{v:,}".replace(",", ".") for v in vals], textposition="outside",
+    ))
+    fig.update_layout(**BASE_LAYOUT, title=_title("Incidentes elegíveis por dia da semana", 15), height=340)
+    fig.update_yaxes(gridcolor=C_GRID, title="Incidentes")
+    return fig
+
+
 def _fig_div(fig, height=430):
     fig.update_layout(width=None, autosize=True, height=height)
     return pio.to_html(fig, include_plotlyjs=False, full_html=False, default_width="100%",
@@ -425,13 +453,28 @@ def _explanations(metrics):
              ler="R² (previsão de volume): perto de 1 = previsão muito aderente. Recall: fração das violações que o modelo detecta. ROC-AUC: 0,5 = chute; 1,0 = perfeito. F1: equilíbrio entre precisão e recall.",
              tirar=f"A confiança para usar os números: volume com R²≈{rd1['r2']:.2f} e risco de OLA com ROC-AUC≈{metrics['ola_risk']['candidates'][metrics['ola_risk']['best_model']]['roc_auc']:.2f} (bom para um MVP)."),
     ]
-    return kpi_help, charts
+    context = [
+        dict(key="funnel", full=False, title="Funil de dados — do bruto ao elegível",
+             tip="Do total de chamados ao subconjunto que entra no KPI.",
+             oque="Quantos chamados brutos existem e quantos realmente entram na análise (elegíveis ao KPI).",
+             origem="Contagem no dataset real: total de linhas vs. filtro 'Entrou para KPI? = SIM'.",
+             ler="A barra maior é o total (122.543). A menor são os elegíveis (25.600). A diferença (~79%) é ruído: alertas de monitoramento automático / 'Sem Intervenção'.",
+             tirar="Por que o painel foca em 25.600 incidentes — o restante é ruído sem intervenção humana e distorceria a análise."),
+        dict(key="weekday", full=False, title="Sazonalidade — incidentes por dia da semana",
+             tip="Em quais dias os incidentes se concentram.",
+             oque="A distribuição dos incidentes elegíveis ao longo dos dias da semana.",
+             origem="Contagem dos 25.600 incidentes elegíveis pelo dia da semana da abertura.",
+             ler="Uma barra por dia (Seg a Dom). As barras em âmbar (Sáb/Dom) são menores — menos incidentes no fim de semana.",
+             tirar="Onde alocar mais gente: o meio de semana concentra a demanda; planeje a escala e o plantão por aí."),
+    ]
+    return kpi_help, charts, context
 
 
 _CSS = """
 *{box-sizing:border-box}
 body{margin:0;background:#EEF0F7;color:#1E2236;font-family:'Trebuchet MS','Calibri','Segoe UI',sans-serif}
 .wrap{max-width:1280px;margin:0 auto;padding:22px}
+.sec{margin:28px 0 6px;font-size:17px;font-weight:bold;color:#12152E;border-left:5px solid #0EA5A4;padding-left:12px}
 header.top{background:#12152E;color:#fff;border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:16px}
 .dots{display:flex;gap:7px}.dot{width:12px;height:12px;border-radius:50%}
 header .tt{font-size:22px;font-weight:bold;line-height:1.1}
@@ -482,7 +525,7 @@ document.querySelectorAll('.help').forEach(function(b){
 
 
 def build_educational_html(daily, kpi, metrics, meta, fdf, path):
-    kpi_help, charts = _explanations(metrics)
+    kpi_help, charts, context = _explanations(metrics)
     cards = metrics["kpi_cards"]
 
     divs = {
@@ -491,7 +534,24 @@ def build_educational_html(daily, kpi, metrics, meta, fdf, path):
         "risk": _fig_div(build_risk_matrix(kpi), 430),
         "confusion": _fig_div(build_confusion(metrics), 360),
         "quality": _fig_div(build_quality(metrics), 360),
+        "funnel": _fig_div(build_noise_funnel(meta), 360),
+        "weekday": _fig_div(build_weekday(kpi), 360),
     }
+
+    def _card_html(c):
+        return (
+            f'<section class="card{" full" if c["full"] else ""}">'
+            f'<div class="card-head"><h3>{c["title"]}</h3>'
+            f'<span class="tipwrap"><button class="help" aria-label="Como ler este gráfico">i</button>'
+            f'<span class="tip">{c["tip"]} Clique para os detalhes.</span></span></div>'
+            f'<div class="help-panel"><div class="hp">'
+            f'<div class="c-oque"><h4>O que é</h4><p>{c["oque"]}</p></div>'
+            f'<div class="c-origem"><h4>De onde vem</h4><p>{c["origem"]}</p></div>'
+            f'<div class="c-ler"><h4>Como ler</h4><p>{c["ler"]}</p></div>'
+            f'<div class="c-tirar"><h4>O que você tira daqui</h4><p>{c["tirar"]}</p></div>'
+            f'</div></div>'
+            f'<div class="plot">{divs[c["key"]]}</div></section>'
+        )
 
     kpi_defs = [
         ("Volume Previsto D+1", f"{cards['volume_d1']:.0f}", C_INDIGO, kpi_help["d1"]),
@@ -508,21 +568,8 @@ def build_educational_html(daily, kpi, metrics, meta, fdf, path):
             f'<div class="val" style="color:{col}">{val}</div></div>'
         )
 
-    cards_html = ""
-    for c in charts:
-        cards_html += (
-            f'<section class="card{" full" if c["full"] else ""}">'
-            f'<div class="card-head"><h3>{c["title"]}</h3>'
-            f'<span class="tipwrap"><button class="help" aria-label="Como ler este gráfico">i</button>'
-            f'<span class="tip">{c["tip"]} Clique para os detalhes.</span></span></div>'
-            f'<div class="help-panel"><div class="hp">'
-            f'<div class="c-oque"><h4>O que é</h4><p>{c["oque"]}</p></div>'
-            f'<div class="c-origem"><h4>De onde vem</h4><p>{c["origem"]}</p></div>'
-            f'<div class="c-ler"><h4>Como ler</h4><p>{c["ler"]}</p></div>'
-            f'<div class="c-tirar"><h4>O que você tira daqui</h4><p>{c["tirar"]}</p></div>'
-            f'</div></div>'
-            f'<div class="plot">{divs[c["key"]]}</div></section>'
-        )
+    cards_html = "".join(_card_html(c) for c in charts)
+    context_html = "".join(_card_html(c) for c in context)
 
     header = (
         '<header class="top"><div class="dots">'
@@ -559,7 +606,9 @@ def build_educational_html(daily, kpi, metrics, meta, fdf, path):
         '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>'
         f'<style>{_CSS}</style></head><body><div class="wrap">'
         f'{header}{onboarding}<div class="kpis">{kpi_html}</div>'
-        f'<div class="grid">{cards_html}</div>{footer}'
+        f'<div class="grid">{cards_html}</div>'
+        f'<div class="sec">Contexto &amp; Qualidade dos Dados</div>'
+        f'<div class="grid">{context_html}</div>{footer}'
         f'</div><script>{_JS}</script></body></html>'
     )
     with open(path, "w", encoding="utf-8") as f:

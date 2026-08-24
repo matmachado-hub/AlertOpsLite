@@ -19,6 +19,7 @@ pydantic>=2.5
 
 # --- Apresentacao ---
 python-pptx>=0.6.23
+qrcode>=7.4              # QR do repositorio no slide do GitHub
 
 # --- Testes (opcional) ---
 httpx>=0.27              # TestClient do FastAPI

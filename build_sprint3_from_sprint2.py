@@ -38,6 +38,20 @@ def _rgb(h):
 SRC_PPTX = os.path.join("templates", "EC_Sprint_2_2TSCOA_arqsolucao_AlertOpsLite_GrupoIrmaos.pptx")
 OUT_PPTX = "EC_Sprint_3_2TSCOA_Evidencias_Construcao_AlertOpsLite_GrupoIrmaos.pptx"
 IMG = "img"
+REPO_URL = "https://github.com/matmachado-hub/AlertOpsLite"
+
+
+def _ensure_qr():
+    """Gera img/qr_github.png (reprodutível). Requer o pacote 'qrcode'."""
+    out = os.path.join(IMG, "qr_github.png")
+    try:
+        import qrcode
+    except ImportError:
+        print("[S3] pacote 'qrcode' ausente; slide do GitHub usará QR existente (se houver).")
+        return
+    qr = qrcode.QRCode(box_size=12, border=2, error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(REPO_URL); qr.make(fit=True)
+    qr.make_image(fill_color=(18, 21, 46), back_color="white").save(out)
 
 # paleta espelhando os graficos da Sprint 2
 C_ORANGE = "#E8991C"
@@ -259,7 +273,8 @@ def _callout(slide, title, items, l, t, w, h, accent="F23237"):
     box.line.fill.background(); box.shadow.inherit = False
     tf = box.text_frame; tf.word_wrap = True; tf.vertical_anchor = MSO_ANCHOR.TOP
     tf.margin_left = Pt(14); tf.margin_top = Pt(12); tf.margin_right = Pt(12)
-    p0 = tf.paragraphs[0]; r = p0.add_run(); r.text = title
+    p0 = tf.paragraphs[0]; p0.alignment = PP_ALIGN.LEFT
+    r = p0.add_run(); r.text = title
     r.font.size = Pt(15); r.font.bold = True; r.font.color.rgb = _rgb(accent); r.font.name = "Trebuchet MS"
     p0.space_after = Pt(9)
     for it in items:
@@ -273,9 +288,11 @@ def _stat(slide, l, t, w, value, label, color):
     box.fill.solid(); box.fill.fore_color.rgb = _rgb("F5F6FB")
     box.line.fill.background(); box.shadow.inherit = False
     tf = box.text_frame; tf.margin_left = Pt(13); tf.margin_top = Pt(10)
-    p = tf.paragraphs[0]; r = p.add_run(); r.text = value
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.LEFT
+    r = p.add_run(); r.text = value
     r.font.size = Pt(25); r.font.bold = True; r.font.color.rgb = _rgb(color); r.font.name = "Trebuchet MS"
-    p2 = tf.add_paragraph(); r2 = p2.add_run(); r2.text = label
+    p2 = tf.add_paragraph(); p2.alignment = PP_ALIGN.LEFT
+    r2 = p2.add_run(); r2.text = label
     r2.font.size = Pt(10.5); r2.font.color.rgb = _rgb("6B7088"); r2.font.name = "Calibri"
 
 
@@ -396,6 +413,39 @@ CODE_API = (
     "    return {'violation_probability': p,\n"
     "            'risk_level': nivel(p)}"
 )
+CODE_API_IO = (
+    "# POST /api/v1/predict/ola-risk\n"
+    "{\n"
+    "  'prioridade': '2 - Alta',\n"
+    "  'produto': 'lhco', 'categoria': 'cat71',\n"
+    "  'grupo_designado': 'Team11',\n"
+    "  'hour': 14, 'day_of_week': 0,\n"
+    "  'month': 8, 'is_weekend': 0\n"
+    "}\n"
+    "# --> 200 OK\n"
+    "{\n"
+    "  'violation_probability': 0.3246,\n"
+    "  'risk_level': 'Medio',\n"
+    "  'recommendation': 'Priorizar triagem\n"
+    "     e acompanhar o prazo de OLA.'\n"
+    "}"
+)
+CODE_DOCKER = (
+    "# Dockerfile (resumo)\n"
+    "FROM python:3.12-slim\n"
+    "COPY requirements.txt .\n"
+    "RUN pip install -r requirements.txt\n"
+    "COPY src/ ./src/\n"
+    "COPY data/LW-DATASET.xlsx ./data/\n"
+    "RUN python src/data_pipeline.py && \\\n"
+    "    python src/model_training.py\n"
+    "CMD [\"uvicorn\", \"src.app_api:app\",\n"
+    "  \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n"
+    "\n"
+    "# build + run\n"
+    "docker build -t alertopslite:sprint3 .\n"
+    "docker run -p 8000:8000 alertopslite:sprint3"
+)
 
 
 def build_evidence_slides(prs, metrics):
@@ -473,9 +523,53 @@ def build_evidence_slides(prs, metrics):
     ], 0.6, 3.35, 7.35, 3.2, size=13, accent="0EA5A4")
     _pic(s, os.path.join(IMG, "dash_exec_charts.png"), 8.2, 3.2, w=4.55)
 
-    # reordena: move os 5 novos slides para logo após o slide 11 (posições 11..15)
+    # E6 — Código-fonte no GitHub (modelo: slide 8 dark)
+    s = _new_slide_from(prs, 7)
+    _set_kt(s, "MVP · REPOSITÓRIO", "Código-fonte público no GitHub")
+    _pic(s, os.path.join(IMG, "qr_github.png"), 1.35, 2.55, w=2.7)
+    _caption(s, "Aponte a câmera do celular", 1.35, 5.35, 2.7)
+    tb = s.shapes.add_textbox(Inches(0.7), Inches(5.75), Inches(4.0), Inches(0.5)).text_frame
+    tb.word_wrap = True
+    pr = tb.paragraphs[0]; pr.alignment = PP_ALIGN.CENTER
+    rr = pr.add_run(); rr.text = "github.com/matmachado-hub/AlertOpsLite"
+    rr.font.size = Pt(12.5); rr.font.bold = True; rr.font.color.rgb = _rgb("4338CA"); rr.font.name = "Consolas"
+    _callout(s, "O repositório entrega", [
+        "Projeto aplicado autocontido (git + Docker ready).",
+        "Estrutura: src/, builder.py, Dockerfile, README.",
+        "Público — clone e execução reprodutível.",
+        "git clone → docker run → API no ar em minutos.",
+    ], 5.2, 2.55, 7.55, 3.7, accent="4338CA")
+
+    # E7 — API em funcionamento (modelo: slide 8 dark)
+    s = _new_slide_from(prs, 7)
+    _set_kt(s, "MVP · API", "API em funcionamento — predições reais")
+    _bullets(s, [
+        "4 endpoints REST testados em /api/v1.",
+        "Documentação Swagger interativa em /docs.",
+        "Modelos .joblib servidos via FastAPI (Pydantic v2).",
+        "Exemplo real de requisição e resposta ao lado →",
+    ], 0.6, 1.8, 5.6, 2.4, accent="4338CA")
+    _callout(s, "Saídas reais validadas", [
+        "predict/volume → D+1=43.6 · D+7=98.7",
+        "predict/ola-risk (Team11 P2) → 'Médio' (0,32)",
+        "health → ok · metrics → R²/AUC do relatório",
+    ], 0.6, 4.1, 5.6, 2.35, accent="0EA5A4")
+    _codebox(s, CODE_API_IO, 6.45, 1.72, 6.25, 4.9, size=10.5)
+
+    # E8 — Empacotamento & Docker (modelo: slide 8 dark)
+    s = _new_slide_from(prs, 7)
+    _set_kt(s, "MVP · ENTREGA", "Empacotamento, reprodutibilidade e Docker")
+    _bullets(s, [
+        "builder.py: 1 comando regenera dados → modelos → painel → PPTX.",
+        "Dockerfile: treina no build e sobe a API (porta 8000).",
+        "requirements.txt fixado + README com passo a passo.",
+        "Base pronta para o deploy da Sprint 4 (VPS Hostinger).",
+    ], 0.6, 1.8, 5.6, 3.4, accent="4338CA")
+    _codebox(s, CODE_DOCKER, 6.45, 1.72, 6.25, 4.9, size=10.5)
+
+    # reordena: move os 8 novos slides para logo após o slide 11 (posições 11..18)
     lst = prs.slides._sldIdLst
-    block = list(lst)[-5:]
+    block = list(lst)[-8:]
     for el in block:
         lst.remove(el)
     for i, el in enumerate(block):
@@ -499,6 +593,7 @@ def main():
     cards = metrics["kpi_cards"]
 
     os.makedirs(IMG, exist_ok=True)
+    _ensure_qr()
     strip = os.path.join(IMG, "slide_forecast_strip.png")
     pvol = os.path.join(IMG, "slide_panel_volume.png")
     prisk = os.path.join(IMG, "slide_panel_risk.png")
@@ -555,7 +650,7 @@ def main():
 
     prs.save(OUT_PPTX)
     total = len(prs.slides._sldIdLst)
-    print(f"[S3] Concluido: {OUT_PPTX} ({total} slides = 15 base + 5 evidencias).")
+    print(f"[S3] Concluido: {OUT_PPTX} ({total} slides = 15 base + 8 evidencias).")
 
 
 if __name__ == "__main__":
