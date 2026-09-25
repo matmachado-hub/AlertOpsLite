@@ -7,7 +7,6 @@ __pycache__/
 # artefatos e entregaveis (nao entram na imagem da API)
 img/
 templates/
-dashboard.html
 EC_Sprint_*.pptx
 README*.md
 Dockerfile
