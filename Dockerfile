@@ -8,9 +8,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Codigo-fonte + dataset de entrada
+# Codigo-fonte + dataset de entrada + dashboard interativo
 COPY src/ ./src/
 COPY data/LW-DATASET.xlsx ./data/LW-DATASET.xlsx
+COPY dashboard.html ./dashboard.html
 
 # Pipeline de dados + treino dos modelos (gera data/*.csv e models/*.joblib)
 RUN python src/data_pipeline.py && python src/model_training.py
